@@ -14,6 +14,26 @@ Core goals:
 - Detect suspicious activity with dashboard counters, timelines, and AI-generated alerts.
 - Include attack simulation scripts for validation and demonstration.
 
+## Screenshots
+
+### Portal Experience
+
+| Sign in | Create account |
+| --- | --- |
+| ![University Portal sign-in page](docs/images/login.png) | ![University Portal registration page with password policy and CAPTCHA](docs/images/register.png) |
+
+### Security Monitoring
+
+| Admin dashboard | AI alerts and live SIEM feed |
+| --- | --- |
+| ![Admin dashboard with security counters and charts](docs/images/admin-dashboard.png) | ![AI alert and live SIEM event feed](docs/images/ai-alerts-siem-feed.png) |
+
+### OpenSearch Dashboards
+
+| University SIEM dashboard | DoS attack dashboard |
+| --- | --- |
+| ![OpenSearch University SIEM dashboard](docs/images/opensearch-siem-dashboard.png) | ![OpenSearch DoS attack dashboard](docs/images/opensearch-dos-dashboard.png) |
+
 ## Features
 
 - Authentication and account lifecycle:
