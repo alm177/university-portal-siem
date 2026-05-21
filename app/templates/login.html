@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Sign In — University Portal{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block body %}
+<div class="page-wrap">
+    <div class="card card-sm">
+        <h1>University Portal</h1>
+        <p>Sign in to access your account.</p>
+
+        <form method="POST">
+            <label for="username">Username</label>
+            <input id="username" name="username" autocomplete="username" required placeholder="Enter your username">
+
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password">
+
+            <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+        </form>
+
+        {% if msg %}
+            <div class="msg msg-error">{{ msg }}</div>
+        {% endif %}
+
+        <div class="links-center">
+            <a href="{{ url_for('auth.forgot_password') }}">Forgot your password?</a>
+            <br>
+            Don't have an account? <a href="{{ url_for('auth.register') }}">Create Account</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

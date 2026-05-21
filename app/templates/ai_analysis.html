@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}AI Analysis — University Portal{% endblock %}
+
+{% block body %}
+<div class="page-content">
+    <div class="card card-full">
+        <h1>AI Security Analysis</h1>
+        <p class="subtitle">The AI model analyzed recent authentication-related security events.</p>
+
+        <pre>{{ result }}</pre>
+
+        <div class="btn-group">
+            <a class="btn btn-primary" href="{{ url_for('admin.admin_page') }}">← Back to Dashboard</a>
+            <a class="btn btn-outline" href="{{ url_for('admin.admin_users') }}">👥 User Management</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

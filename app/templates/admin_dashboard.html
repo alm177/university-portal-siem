@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — University Portal{% endblock %}
+
+{% block body %}
+<div class="page-content">
+    <div class="card card-full">
+        <h1>Admin Dashboard</h1>
+        <p class="subtitle">Welcome, {{ username }} — University Security Monitoring</p>
+
+        <!-- Attack Counter Cards -->
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card danger">
+                <span class="stat-icon">🔴</span>
+                <div class="stat-value" id="stat-failed">{{ total_users }}</div>
+                <div class="stat-label">Failed Logins</div>
+            </div>
+            <div class="stat-card warning">
+                <span class="stat-icon">🔒</span>
+                <div class="stat-value" id="stat-ip-lock">0</div>
+                <div class="stat-label">IP Lockouts</div>
+            </div>
+            <div class="stat-card purple">
+                <span class="stat-icon">🚫</span>
+                <div class="stat-value" id="stat-acct-lock">0</div>
+                <div class="stat-label">Acct Lockouts</div>
+            </div>
+            <div class="stat-card danger">
+                <span class="stat-icon">💥</span>
+                <div class="stat-value" id="stat-dos">0</div>
+                <div class="stat-label">DoS Attacks</div>
+            </div>
+            <div class="stat-card warning">
+                <span class="stat-icon">⚠️</span>
+                <div class="stat-value" id="stat-denied">0</div>
+                <div class="stat-label">Access Denied</div>
+            </div>
+            <div class="stat-card success">
+                <span class="stat-icon">🤖</span>
+                <div class="stat-value" id="stat-ai">{{ alert_count }}</div>
+                <div class="stat-label">AI Alerts</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-box chart-box-full">
+                <h3>📈 Events Timeline (Last 30 Days)</h3>
+                <canvas id="timelineChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <h3>🎯 Attack Category Distribution</h3>
+                <canvas id="categoryChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <h3>🌐 Top IPs by Activity</h3>
+                <canvas id="ipChart"></canvas>
+            </div>
+        </div>
+
+        <!-- AI Monitoring -->
+        <div class="section-title">🤖 Live AI Monitoring</div>
+        <div id="live-ai-box">
+            {% if latest_alert %}
+            <div class="alert-box alert-{{ latest_alert['severity'] }}">
+                <div class="alert-title">🤖 AI Alert Active</div>
+                <p><strong>Title:</strong> {{ latest_alert["title"] }}</p>
+                <p><strong>Severity:</strong>
+                    <span class="severity-badge severity-{{ latest_alert['severity'] }}">{{ latest_alert["severity"]|upper }}</span>
+                </p>
+                <p><strong>Summary:</strong> {{ latest_alert["summary"] }}</p>
+                <p class="alert-meta">Created: {{ latest_alert["created_at"] }}</p>
+            </div>
+            {% else %}
+            <div class="alert-box alert-low">
+                <div class="alert-title">🤖 System Monitoring</div>
+                <p>No active AI alerts. The system is monitoring for suspicious activity.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Live SIEM Log Feed -->
+        <div class="section-title">📋 Live SIEM Event Feed</div>
+        <div class="table-wrap">
+            <table id="log-feed-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Event</th>
+                        <th>User</th>
+                        <th>IP</th>
+                        <th>Status</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody id="log-feed-body">
+                    <tr><td colspan="6" class="loading-placeholder"><span class="spinner"></span> Loading SIEM data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="btn-group">
+            <a class="btn btn-primary" href="{{ url_for('admin.admin_siem') }}">📊 Open SIEM Dashboard</a>
+            <a class="btn btn-primary" href="{{ url_for('admin.admin_users') }}">👥 User Management</a>
+            <a class="btn btn-primary" href="{{ url_for('admin.ai_analysis') }}">🧠 Run AI Analysis</a>
+            <a class="btn btn-outline" href="{{ url_for('admin.admin_ai_alerts') }}">📋 View AI Alerts</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+// Color palette
+const COLORS = {
+    blue: '#00d4ff', green: '#39ff14', magenta: '#ff2d95',
+    purple: '#a855f7', amber: '#ffb800', red: '#ff2d55',
+    blueAlpha: 'rgba(0,212,255,0.15)', greenAlpha: 'rgba(57,255,20,0.12)',
+    magentaAlpha: 'rgba(255,45,149,0.12)', purpleAlpha: 'rgba(168,85,247,0.12)',
+};
+
+const chartDefaults = {
+    color: '#9ca3b8',
+    borderColor: 'rgba(100,220,255,0.06)',
+};
+Chart.defaults.color = chartDefaults.color;
+Chart.defaults.borderColor = chartDefaults.borderColor;
+
+let timelineChart, categoryChart, ipChart;
+
+async function loadSiemStats() {
+    try {
+        const res = await fetch('{{ url_for("admin.api_siem_stats") }}', { headers: { 'X-Auto-Refresh': '1' } });
+        if (res.status === 403) {
+            window.location.href = '{{ url_for("auth.login", expired="idle") }}';
+            return;
+        }
+        const data = await res.json();
+        if (!data.ok) return;
+
+        // Update stat cards
+        const c = data.counters;
+        document.getElementById('stat-failed').textContent = c.failed_logins || 0;
+        document.getElementById('stat-ip-lock').textContent = c.ip_lockouts || 0;
+        document.getElementById('stat-acct-lock').textContent = c.account_lockouts || 0;
+        document.getElementById('stat-dos').textContent = c.dos_events || 0;
+        document.getElementById('stat-denied').textContent = c.access_denied || 0;
+        document.getElementById('stat-ai').textContent = c.ai_alerts || 0;
+
+        // Timeline chart
+        const tl = data.timeline;
+        if (tl.length > 0) {
+            const labels = tl.map(d => d.date.slice(5));
+            const datasets = [
+                { label: 'Failed Logins', data: tl.map(d => d.failed_logins), borderColor: COLORS.red, backgroundColor: 'rgba(255,45,85,0.08)', fill: true, tension: 0.3 },
+                { label: 'Login Success', data: tl.map(d => d.login_success), borderColor: COLORS.green, backgroundColor: COLORS.greenAlpha, fill: true, tension: 0.3 },
+                { label: 'IP Locked', data: tl.map(d => d.ip_locked), borderColor: COLORS.amber, backgroundColor: 'rgba(255,184,0,0.08)', fill: true, tension: 0.3 },
+                { label: 'DoS', data: tl.map(d => d.dos), borderColor: COLORS.magenta, backgroundColor: COLORS.magentaAlpha, fill: true, tension: 0.3 },
+            ];
+            const ctx1 = document.getElementById('timelineChart').getContext('2d');
+            if (timelineChart) timelineChart.destroy();
+            timelineChart = new Chart(ctx1, {
+                type: 'line',
+                data: { labels, datasets },
+                options: { responsive: true, plugins: { legend: { labels: { boxWidth: 12, padding: 16 } } }, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        // Category doughnut
+        const cats = [
+            { label: 'Brute Force', value: c.failed_logins + c.ip_lockouts + c.account_lockouts, color: COLORS.red },
+            { label: 'Mass Registration', value: c.reg_failed || 0, color: COLORS.amber },
+            { label: 'DoS Attacks', value: c.dos_events || 0, color: COLORS.magenta },
+            { label: 'Access Denied', value: c.access_denied || 0, color: COLORS.purple },
+        ].filter(c => c.value > 0);
+
+        if (cats.length > 0) {
+            const ctx2 = document.getElementById('categoryChart').getContext('2d');
+            if (categoryChart) categoryChart.destroy();
+            categoryChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: cats.map(c => c.label),
+                    datasets: [{ data: cats.map(c => c.value), backgroundColor: cats.map(c => c.color), borderWidth: 0, hoverOffset: 8 }]
+                },
+                options: { responsive: true, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } } } }
+            });
+        }
+
+        // Top IPs bar chart
+        const ips = data.top_ips;
+        if (ips.length > 0) {
+            const ctx3 = document.getElementById('ipChart').getContext('2d');
+            if (ipChart) ipChart.destroy();
+            ipChart = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: ips.map(i => i.ip),
+                    datasets: [
+                        { label: 'Total Events', data: ips.map(i => i.total), backgroundColor: COLORS.blueAlpha, borderColor: COLORS.blue, borderWidth: 1 },
+                        { label: 'Failed', data: ips.map(i => i.failed), backgroundColor: COLORS.magentaAlpha, borderColor: COLORS.magenta, borderWidth: 1 }
+                    ]
+                },
+                options: { responsive: true, indexAxis: 'y', plugins: { legend: { labels: { boxWidth: 12 } } } }
+            });
+        }
+    } catch (e) {
+        console.error('Failed to load SIEM stats:', e);
+    }
+}
+
+async function loadSiemLogs() {
+    try {
+        const res = await fetch('{{ url_for("admin.api_siem_logs") }}', { headers: { 'X-Auto-Refresh': '1' } });
+        if (res.status === 403) {
+            window.location.href = '{{ url_for("auth.login", expired="idle") }}';
+            return;
+        }
+        const data = await res.json();
+        if (!data.ok) return;
+
+        const tbody = document.getElementById('log-feed-body');
+        if (data.events.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted)">No recent events.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.events.map(e => {
+            const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : '-';
+            const statusClass = e.success ? 'log-success' : 'log-fail';
+            const statusText = e.success ? '✅' : '❌';
+            return `<tr>
+                <td style="font-size:12px;color:var(--text-muted)">${ts}</td>
+                <td class="log-event">${e.event}</td>
+                <td>${e.username || '-'}</td>
+                <td>${e.ip || '-'}</td>
+                <td class="${statusClass}">${statusText}</td>
+                <td style="font-size:12px">${e.reason || '-'}</td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        console.error('Failed to load logs:', e);
+    }
+}
+
+async function checkAiAlerts() {
+    try {
+        const res = await fetch('{{ url_for("admin.admin_ai_alerts_check") }}', { headers: { 'X-Auto-Refresh': '1' } });
+        if (res.status === 403) {
+            window.location.href = '{{ url_for("auth.login", expired="idle") }}';
+            return;
+        }
+        const data = await res.json();
+        const box = document.getElementById('live-ai-box');
+        if (data.ok && data.alert) {
+            box.innerHTML = `
+                <div class="alert-box alert-${data.alert.severity}">
+                    <div class="alert-title">🤖 AI Alert Active</div>
+                    <p><strong>Title:</strong> ${data.alert.title}</p>
+                    <p><strong>Severity:</strong>
+                        <span class="severity-badge severity-${data.alert.severity}">${data.alert.severity.toUpperCase()}</span>
+                    </p>
+                    <p><strong>Summary:</strong> ${data.alert.summary}</p>
+                    <p class="alert-meta">Created: ${data.alert.created_at}</p>
+                </div>`;
+        }
+    } catch (e) { console.log("AI check failed"); }
+}
+
+// Initial load
+loadSiemStats();
+loadSiemLogs();
+
+// Auto-refresh
+setInterval(loadSiemStats, 60000);
+setInterval(loadSiemLogs, 30000);
+setInterval(checkAiAlerts, 30000);
+</script>
+{% endblock %}

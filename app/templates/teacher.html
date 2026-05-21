@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Teacher Dashboard — University Portal{% endblock %}
+
+{% block body %}
+<div class="page-content">
+    <div class="card card-full">
+        <h1>Teacher Dashboard</h1>
+        <p class="subtitle">Welcome, {{ username }} — role: {{ role }}</p>
+
+        {% if msg %}
+            <div class="msg {{ 'msg-success' if ok else 'msg-error' }}">{{ msg }}</div>
+        {% endif %}
+
+        <div class="grid-2">
+            <div class="card">
+                <h2 style="margin-top:0">Create Course</h2>
+                <form method="POST">
+                    <input type="hidden" name="action" value="create_course">
+                    <label for="course_name">Course Name</label>
+                    <input id="course_name" name="course_name" required placeholder="e.g. Introduction to Cybersecurity">
+                    <label for="course_description">Description</label>
+                    <textarea id="course_description" name="course_description" rows="3" placeholder="Optional description..."></textarea>
+                    <button type="submit" class="btn btn-primary btn-full">Create Course</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-top:0">Enroll Student</h2>
+                <form method="POST">
+                    <input type="hidden" name="action" value="enroll_student">
+                    <label for="course_id">Select Course</label>
+                    <select id="course_id" name="course_id" required>
+                        {% for c in courses %}
+                            <option value="{{ c['id'] }}">{{ c['name'] }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <label for="student_id">Select Student</label>
+                    <select id="student_id" name="student_id" required>
+                        {% for s in students %}
+                            <option value="{{ s['id'] }}">{{ s['username'] }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button type="submit" class="btn btn-primary btn-full">Add Student to Course</button>
+                </form>
+            </div>
+        </div>
+
+        <h2>Your Courses</h2>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Course</th>
+                        <th>Description</th>
+                        <th>Students Enrolled</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in teacher_courses %}
+                    <tr>
+                        <td>{{ c["name"] }}</td>
+                        <td>{{ c["description"] or "—" }}</td>
+                        <td>{{ c["student_count"] }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" style="color:var(--text-muted)">No courses created yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

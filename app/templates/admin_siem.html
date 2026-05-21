@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}SIEM Dashboard — University Portal{% endblock %}
+
+{% block body %}
+<div class="page-content">
+    <div class="card card-full">
+        <h1>SIEM Dashboard</h1>
+        <p class="subtitle">University Security Information & Event Management — OpenSearch Dashboards</p>
+
+        <div class="btn-group" style="margin-top:0; margin-bottom:16px;">
+            <a class="btn btn-outline" href="{{ url_for('admin.admin_page') }}">← Back to Dashboard</a>
+            <a class="btn btn-primary" href="{{ url_for('admin.ai_analysis') }}">🧠 Run AI Analysis</a>
+        </div>
+
+        <div class="siem-iframe-wrap">
+            <iframe
+                id="siem-frame"
+                src="http://localhost:5601/app/dashboards#/view/4bacc3d0-12ff-11f1-bb13-fbeb8364616b?embed=true&_g=(time:(from:now-30d,to:now))"
+                title="University SIEM Dashboard"
+                allow="fullscreen"
+            ></iframe>
+        </div>
+    </div>
+</div>
+{% endblock %}

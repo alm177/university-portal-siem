@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="University Portal — Secure academic management system">
+    <title>{% block title %}University Portal{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% block navbar %}
+{% set is_admin_route = request.path.startswith('/admin') %}
+{% set admin_sess = session.get('admin_user_id') %}
+{% set user_sess = session.get('user_user_id') %}
+
+{# Show admin navbar on admin routes if admin is logged in #}
+{% if is_admin_route and admin_sess %}
+<nav class="navbar">
+    <a href="/" class="navbar-brand">
+        <span class="shield">🎓</span>
+        University Portal
+    </a>
+    <div class="navbar-right">
+        <span class="navbar-user">{{ session.get('admin_username', '') }}</span>
+        <span class="role-badge admin">admin</span>
+        <a href="{{ url_for('admin.admin_page') }}" class="navbar-link">Dashboard</a>
+        <a href="{{ url_for('admin.admin_siem') }}" class="navbar-link">SIEM</a>
+        <a href="{{ url_for('admin.admin_users') }}" class="navbar-link">Users</a>
+        <a href="{{ url_for('admin.admin_ai_alerts') }}" class="navbar-link">AI Alerts</a>
+        <a href="{{ url_for('auth.change_password') }}" class="navbar-link">🔑 Password</a>
+        <a href="{{ url_for('auth.logout', ctx='admin') }}" class="navbar-link">Sign Out</a>
+    </div>
+</nav>
+
+{# Show user navbar on non-admin routes if user is logged in #}
+{% elif not is_admin_route and user_sess %}
+<nav class="navbar">
+    <a href="/" class="navbar-brand">
+        <span class="shield">🎓</span>
+        University Portal
+    </a>
+    <div class="navbar-right">
+        <span class="navbar-user">{{ session.get('user_username', '') }}</span>
+        <span class="role-badge {{ session.get('user_role', '') }}">{{ session.get('user_role', '') }}</span>
+        <a href="{{ url_for('auth.change_password') }}" class="navbar-link">🔑 Password</a>
+        <a href="{{ url_for('auth.logout', ctx='user') }}" class="navbar-link">Sign Out</a>
+    </div>
+</nav>
+{% endif %}
+{% endblock %}
+
+{% block body %}{% endblock %}
+
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

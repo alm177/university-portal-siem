@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Access Denied — University Portal{% endblock %}
+
+{% block body %}
+<div class="page-wrap">
+    <div class="card card-md">
+        <div class="denied-header">
+            <div class="denied-icon">⛔</div>
+            <div>
+                <h1 style="-webkit-text-fill-color:#ef4444; color:#ef4444;">Access Denied</h1>
+                <p style="margin:0">You do not have permission to access this page.</p>
+            </div>
+        </div>
+
+        <div style="margin-bottom:16px">
+            <span class="info-badge">Your role: {{ role }}</span>
+        </div>
+
+        <div class="msg msg-error">
+            If you believe this is a mistake, please contact the system administrator.
+        </div>
+
+        <div class="links-center" style="margin-top:20px">
+            <a href="{{ url_for('auth.login') }}">Back to Sign In</a>
+            {% if logged_in %}
+                &nbsp; | &nbsp;
+                <a href="{{ url_for('auth.logout') }}">Sign Out</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}AI Alerts — University Portal{% endblock %}
+
+{% block body %}
+<div class="page-content">
+    <div class="card card-full">
+        <h1>AI Security Alerts</h1>
+        <p class="subtitle">Recent AI-generated security alerts from the monitoring system.</p>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Severity</th>
+                        <th>Summary</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in alerts %}
+                    <tr>
+                        <td>{{ a["id"] }}</td>
+                        <td>{{ a["title"] }}</td>
+                        <td><span class="severity-badge severity-{{ a['severity'] }}">{{ a["severity"]|upper }}</span></td>
+                        <td>{{ a["summary"] }}</td>
+                        <td style="white-space:nowrap">{{ a["created_at"] }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="color:var(--text-muted)">No AI alerts generated yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="btn-group">
+            <a class="btn btn-primary" href="{{ url_for('admin.admin_page') }}">← Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

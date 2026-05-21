@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}User Management — University Portal{% endblock %}
+
+{% block body %}
+<div class="page-content">
+    <div class="card card-full">
+        <h1>User Management</h1>
+        <p class="subtitle">Manage user accounts, roles, and activation status.</p>
+
+        {% if msg %}
+            <div class="msg {{ 'msg-success' if ok else 'msg-error' }}">{{ msg }}</div>
+        {% endif %}
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>{{ u["id"] }}</td>
+                        <td>{{ u["username"] }}</td>
+                        <td>{{ u["email"] }}</td>
+                        <td><span class="role-badge {{ u['role'] }}">{{ u["role"] }}</span></td>
+                        <td>
+                            {% if u["is_active"] %}
+                                <span class="status status-enabled">Enabled</span>
+                            {% else %}
+                                <span class="status status-disabled">Disabled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u["username"] != "admin" %}
+                            <div class="actions-row">
+                                {% if u["is_active"] %}
+                                <form method="POST" action="{{ url_for('admin.admin_toggle_user', user_id=u['id']) }}">
+                                    <input type="hidden" name="action" value="disable">
+                                    <button class="btn-danger-sm" type="submit">Disable</button>
+                                </form>
+                                {% else %}
+                                <form method="POST" action="{{ url_for('admin.admin_toggle_user', user_id=u['id']) }}">
+                                    <input type="hidden" name="action" value="enable">
+                                    <button class="btn-success-sm" type="submit">Enable</button>
+                                </form>
+                                {% endif %}
+                                <form method="POST" action="{{ url_for('admin.admin_change_role', user_id=u['id']) }}" style="display:flex;align-items:center;gap:6px">
+                                    <select name="new_role" required style="width:auto;min-width:110px;padding:7px 10px;font-size:12px">
+                                        <option value="student" {{ 'selected' if u['role']=='student' }}>Student</option>
+                                        <option value="teacher" {{ 'selected' if u['role']=='teacher' }}>Teacher</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-outline" type="submit">Update</button>
+                                </form>
+                            </div>
+                            {% else %}
+                                <span style="font-size:12px;color:var(--text-muted)">Protected account</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="btn-group">
+            <a class="btn btn-primary" href="{{ url_for('admin.admin_page') }}">← Back to Dashboard</a>
+            <a class="btn btn-primary" href="{{ url_for('admin.ai_analysis') }}">🧠 Run AI Analysis</a>
+            <a class="btn btn-outline" href="{{ url_for('admin.admin_ai_alerts') }}">📋 AI Alerts</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

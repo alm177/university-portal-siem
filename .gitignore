@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+app/venv/
+
+# Local configuration and secrets
+.env
+*.env
+app/.env
+ollama/id_ed25519
+ollama/id_ed25519.pub
+
+# Local databases and runtime state
+*.db
+app/database.db
+instance/
+
+# Portable backup artifacts
+docker/images/
+docker/data_backup/
+ollama/models/
+ollama/history
+ollama/history.tmp
+ollama/server.json
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
