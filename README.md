@@ -190,18 +190,6 @@ Do not publish local runtime or private backup data. The `.gitignore` is configu
 - exported Docker images
 - local Ollama models and SSH keys
 
-Recommended repository description:
-
-```text
-Graduation project: a Flask university portal with SIEM logging, OpenSearch dashboards, abuse detection, DoS protection, and local AI threat analysis using Ollama.
-```
-
-Suggested topics:
-
-```text
-flask, cybersecurity, siem, opensearch, ollama, sqlite, university-portal, threat-detection, rate-limiting, graduation-project
-```
-
 ## Security Notice
 
 This is an academic graduation project and demonstration lab. Review configuration, credentials, deployment settings, email delivery, TLS, database storage, and secret management before using it outside a controlled local environment.
