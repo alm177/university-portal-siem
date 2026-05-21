@@ -9,6 +9,7 @@
         <p>Select the appropriate role. Admin cannot be selected here.</p>
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="username">Username</label>
             <input id="username" name="username" required placeholder="Choose a username">
 

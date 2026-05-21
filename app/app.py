@@ -7,16 +7,17 @@ Configures Flask with security middleware:
   - HTTP security headers (OWASP best practices)
 """
 
-from flask import Flask, redirect, url_for, session, request, make_response
+from flask import Flask, abort, redirect, url_for, session, request, make_response
 from datetime import timedelta
 
 from config import (
     SECRET_KEY, SESSION_IDLE_MINUTES, SESSION_ABSOLUTE_HOURS,
     DOS_WARNING_THRESHOLD, DOS_BLOCK_THRESHOLD, DOS_WINDOW_SECONDS, DOS_BLOCK_MINUTES,
-    SECURITY_HEADERS_ENABLED
+    SECURITY_HEADERS_ENABLED, SESSION_COOKIE_SECURE, FLASK_DEBUG, validate_security_config
 )
 from models import init_db_and_seed_admin
-from services.siem import send_log
+from services.csrf import get_csrf_token, validate_csrf_token
+from services.siem import get_client_ip, send_log
 from services.rate_limiter import now_local, parse_dt
 from services.dos_protection import record_request as dos_record
 
@@ -27,11 +28,16 @@ from routes.student import student_bp
 
 
 def create_app():
+    validate_security_config()
+
     app = Flask(__name__)
     app.config["SECRET_KEY"] = SECRET_KEY
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = SESSION_COOKIE_SECURE
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=SESSION_ABSOLUTE_HOURS)
+
+    init_db_and_seed_admin()
 
     # Register blueprints
     app.register_blueprint(auth_bp)
@@ -44,14 +50,18 @@ def create_app():
     def index():
         return redirect(url_for("auth.login"))
 
-    # ── DoS Protection (runs first) ─────────────────────────────
+    @app.context_processor
+    def inject_csrf_token():
+        return {"csrf_token": get_csrf_token}
+
+    # DoS protection runs first so request floods are blocked early.
     @app.before_request
     def check_dos():
         # Skip static files
         if request.path.startswith("/static"):
             return
 
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
+        ip = get_client_ip()
         status, count = dos_record(
             ip, DOS_WINDOW_SECONDS, DOS_WARNING_THRESHOLD,
             DOS_BLOCK_THRESHOLD, DOS_BLOCK_MINUTES
@@ -91,7 +101,21 @@ def create_app():
                 "ip": ip
             })
 
-    # ── Session timeout management ──────────────────────────────
+    @app.before_request
+    def check_csrf():
+        if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+            return
+
+        submitted_token = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
+        if validate_csrf_token(submitted_token):
+            return
+
+        send_log("csrf_failed", "unknown", "unknown", False, "invalid_csrf_token", {
+            "request_path": request.path
+        })
+        abort(400, description="Invalid or missing CSRF token.")
+
+    # Session timeout management
     @app.before_request
     def check_session_timeout():
         from services.session_manager import ADMIN_PREFIX, USER_PREFIX, get_session_by_prefix, clear_session
@@ -140,7 +164,7 @@ def create_app():
                 # Normal user interaction, update the session
                 session[f"{prefix}last_active"] = now.isoformat()
 
-    # ── Security Headers (OWASP Best Practices) ─────────────────
+    # Security headers (OWASP best practices)
     @app.after_request
     def add_security_headers(response):
         if not SECURITY_HEADERS_ENABLED:
@@ -152,22 +176,22 @@ def create_app():
         # XSS Protection fallback for older browsers
         response.headers["X-XSS-Protection"] = "1; mode=block"
 
-        # Prevent clickjacking — allow framing only for the SIEM iframe page
+        # Prevent clickjacking; allow framing only for the SIEM iframe page.
         if request.path != "/admin/siem":
             response.headers["X-Frame-Options"] = "DENY"
         else:
             response.headers["X-Frame-Options"] = "SAMEORIGIN"
 
-        # Referrer policy — don't leak full URLs
+        # Referrer policy: don't leak full URLs.
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-        # Permissions policy — disable unnecessary browser features
+        # Permissions policy: disable unnecessary browser features.
         response.headers["Permissions-Policy"] = (
             "geolocation=(), microphone=(), camera=(), "
             "payment=(), usb=(), magnetometer=()"
         )
 
-        # Cache control — don't cache authenticated pages
+        # Cache control: don't cache authenticated pages.
         if session.get("admin_user_id") or session.get("user_user_id"):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response.headers["Pragma"] = "no-cache"
@@ -202,5 +226,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    init_db_and_seed_admin()
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=FLASK_DEBUG)

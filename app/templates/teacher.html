@@ -15,6 +15,7 @@
             <div class="card">
                 <h2 style="margin-top:0">Create Course</h2>
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="create_course">
                     <label for="course_name">Course Name</label>
                     <input id="course_name" name="course_name" required placeholder="e.g. Introduction to Cybersecurity">
@@ -27,6 +28,7 @@
             <div class="card">
                 <h2 style="margin-top:0">Enroll Student</h2>
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="enroll_student">
                     <label for="course_id">Select Course</label>
                     <select id="course_id" name="course_id" required>

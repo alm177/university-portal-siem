@@ -18,6 +18,7 @@ Tests the following attack vectors:
 import requests
 import time
 import json
+import re
 import sys
 import sqlite3
 import os
@@ -27,14 +28,15 @@ BASE = "http://127.0.0.1:5000"
 load_dotenv()
 
 ADMIN_USERNAME = os.environ.get("DEFAULT_ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.environ.get("DEFAULT_ADMIN_PASSWORD", "change-this-admin-password")
+ADMIN_PASSWORD = os.environ.get("DEFAULT_ADMIN_PASSWORD", "")
 OS_USER = os.environ.get("OS_USER", "admin")
-OS_PASS = os.environ.get("OS_PASS", "change-this-opensearch-password")
+OS_PASS = os.environ.get("OS_PASS", "")
 
 # Counters
 passed = 0
 failed = 0
 warnings_list = []
+CSRF_RE = re.compile(r'name="csrf_token" value="([^"]+)"')
 
 def header(title):
     print(f"\n{'='*70}")
@@ -51,6 +53,21 @@ def check(test_name, condition, detail=""):
         print(f"  [FAIL] {test_name}")
     if detail:
         print(f"         -> {detail}")
+
+
+def get_csrf_token(session_obj, path):
+    """Fetch a form page and extract its CSRF token."""
+    response = session_obj.get(f"{BASE}{path}", timeout=5)
+    match = CSRF_RE.search(response.text)
+    if not match:
+        raise RuntimeError(f"CSRF token not found on {path} (HTTP {response.status_code})")
+    return match.group(1)
+
+
+def with_csrf(session_obj, path, data):
+    payload = dict(data)
+    payload["csrf_token"] = get_csrf_token(session_obj, path)
+    return payload
 
 
 def clear_ip_locks():
@@ -73,10 +90,10 @@ def test_brute_force_login():
     results = []
 
     for i in range(1, 8):
-        r = s.post(f"{BASE}/login", data={
-            "username": "admin",
+        r = s.post(f"{BASE}/login", data=with_csrf(s, "/login", {
+            "username": ADMIN_USERNAME,
             "password": f"WrongPass{i}!"
-        }, allow_redirects=False)
+        }), allow_redirects=False)
         results.append(r)
         locked = "Too many failed login attempts" in r.text if r.status_code == 200 else False
         print(f"    Attempt {i}: HTTP {r.status_code} | Locked message: {locked}")
@@ -92,10 +109,10 @@ def test_brute_force_login():
           "All responses returned HTTP 200")
 
     # Verify the lockout persists - even correct password is rejected
-    r = s.post(f"{BASE}/login", data={
+    r = s.post(f"{BASE}/login", data=with_csrf(s, "/login", {
         "username": ADMIN_USERNAME,
         "password": ADMIN_PASSWORD
-    }, allow_redirects=False)
+    }), allow_redirects=False)
     still_locked = "Too many failed login attempts" in r.text
     check("Correct password rejected during IP lockout",
           still_locked,
@@ -114,15 +131,13 @@ def test_mass_registration():
     results = []
 
     for i in range(1, 8):
-        # GET to get captcha in session
-        s.get(f"{BASE}/register")
-        r = s.post(f"{BASE}/register", data={
+        r = s.post(f"{BASE}/register", data=with_csrf(s, "/register", {
             "username": f"spamuser{i}",
             "email": f"spam{i}@test.com",
             "password": "Spam@1234",
             "role": "student",
             "captcha_answer": "wrong"
-        }, allow_redirects=False)
+        }), allow_redirects=False)
         results.append(r)
         locked = "Too many registration attempts" in r.text
         print(f"    Attempt {i}: HTTP {r.status_code} | Locked: {locked}")
@@ -153,9 +168,9 @@ def test_password_reset_abuse():
     results = []
 
     for i in range(1, 6):
-        r = s.post(f"{BASE}/forgot-password", data={
+        r = s.post(f"{BASE}/forgot-password", data=with_csrf(s, "/forgot-password", {
             "email": f"nonexistent{i}@test.com"
-        }, allow_redirects=False)
+        }), allow_redirects=False)
         results.append(r)
         locked = "Too many reset requests" in r.text
         print(f"    Attempt {i}: HTTP {r.status_code} | Locked: {locked}")
@@ -189,10 +204,10 @@ def test_unauthorized_access():
     # 4b: Access admin pages as student
     print("\n  4b: Accessing admin pages as student role...")
     s2 = requests.Session()
-    r = s2.post(f"{BASE}/login", data={
+    r = s2.post(f"{BASE}/login", data=with_csrf(s2, "/login", {
         "username": "teststudent",
         "password": "Test@1234"
-    }, allow_redirects=False)
+    }), allow_redirects=False)
 
     if r.status_code == 302:
         print(f"    Logged in as student 'teststudent' (redirected to {r.headers.get('Location')})")
@@ -222,13 +237,13 @@ def test_captcha_validation():
     r = s.get(f"{BASE}/register")
     check("Register page loads", r.status_code == 200)
 
-    r = s.post(f"{BASE}/register", data={
+    r = s.post(f"{BASE}/register", data=with_csrf(s, "/register", {
         "username": "captchatest",
         "email": "captcha@test.com",
         "password": "Test@1234",
         "role": "student",
         "captcha_answer": "999"
-    }, allow_redirects=False)
+    }), allow_redirects=False)
     captcha_failed = "Incorrect CAPTCHA" in r.text
     check("Wrong CAPTCHA is rejected",
           captcha_failed,
@@ -243,10 +258,10 @@ def test_login_after_lock_clear():
     clear_ip_locks()
 
     s = requests.Session()
-    r = s.post(f"{BASE}/login", data={
+    r = s.post(f"{BASE}/login", data=with_csrf(s, "/login", {
         "username": ADMIN_USERNAME,
         "password": ADMIN_PASSWORD
-    }, allow_redirects=False)
+    }), allow_redirects=False)
 
     check("Admin login succeeds with correct credentials",
           r.status_code == 302,
@@ -363,10 +378,10 @@ def test_ai_alert_trigger():
     clear_ip_locks()
 
     s = requests.Session()
-    r = s.post(f"{BASE}/login", data={
+    r = s.post(f"{BASE}/login", data=with_csrf(s, "/login", {
         "username": ADMIN_USERNAME,
         "password": ADMIN_PASSWORD
-    }, allow_redirects=False)
+    }), allow_redirects=False)
 
     if r.status_code != 302:
         check("Admin login for AI test", False, f"HTTP {r.status_code}")

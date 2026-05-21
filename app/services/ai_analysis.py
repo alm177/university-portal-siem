@@ -11,7 +11,7 @@ Follows NIST CSF Detect function and MITRE ATT&CK pattern mapping.
 import json
 import requests
 from collections import defaultdict
-from config import OS_URL, OS_INDEX, OS_USER, OS_PASS
+from config import OS_URL, OS_INDEX, OS_USER, OS_PASS, OS_VERIFY_SSL
 from models import get_db
 from services.rate_limiter import parse_dt, now_local
 from datetime import timedelta
@@ -64,7 +64,7 @@ def get_recent_logs():
         url,
         auth=(OS_USER, OS_PASS),
         json=query,
-        verify=False,
+        verify=OS_VERIFY_SSL,
         timeout=10
     )
     data = response.json()

@@ -14,12 +14,12 @@ Requires OpenSearch to be running and accessible.
 import json
 import requests
 import urllib3
-from config import OS_URL, OS_USER, OS_PASS, OS_INDEX
+from config import OS_URL, OS_USER, OS_PASS, OS_INDEX, OS_VERIFY_SSL
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 AUTH = (OS_USER, OS_PASS)
-VERIFY = False
+VERIFY = OS_VERIFY_SSL
 HEADERS = {"Content-Type": "application/json"}
 
 

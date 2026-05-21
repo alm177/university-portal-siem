@@ -14,9 +14,19 @@ import requests
 import time
 import random
 import string
+import re
 
 TARGET_URL = "http://127.0.0.1:5000/register"
 ATTEMPTS = 8
+CSRF_RE = re.compile(r'name="csrf_token" value="([^"]+)"')
+
+
+def get_csrf_token(session):
+    response = session.get(TARGET_URL, timeout=5)
+    match = CSRF_RE.search(response.text)
+    if not match:
+        raise RuntimeError(f"CSRF token not found (HTTP {response.status_code})")
+    return match.group(1)
 
 def generate_random_string(length=8):
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
@@ -29,10 +39,6 @@ print("Waiting 2 seconds before starting...\n")
 time.sleep(2)
 
 session = requests.Session()
-
-# Fetch the page once to get the session cookie (which holds the CAPTCHA answer on the backend)
-print("Fetching initial registration page to establish session...")
-session.get(TARGET_URL)
 
 for i in range(1, ATTEMPTS + 1):
     bot_username = f"bot_{generate_random_string(5)}"
@@ -47,7 +53,8 @@ for i in range(1, ATTEMPTS + 1):
         "email": bot_email,
         "password": bot_password,
         "role": "student",
-        "captcha_answer": fake_captcha
+        "captcha_answer": fake_captcha,
+        "csrf_token": get_csrf_token(session)
     }
     
     print(f"[{i}/{ATTEMPTS}] Registering '{bot_username}' (Guessing CAPTCHA: {fake_captcha}) ... ", end="", flush=True)

@@ -16,6 +16,7 @@ Security features implemented:
 import re
 import random
 import secrets
+import hmac
 from datetime import datetime, timedelta
 from flask import Blueprint, request, redirect, url_for, render_template, session, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -114,7 +115,7 @@ def _store_verification_code(email, code, purpose):
 
     cur.execute(
         "INSERT INTO verification_codes (email, code, purpose, expires_at) VALUES (?, ?, ?, ?)",
-        (email, code, purpose, expires)
+        (email, generate_password_hash(code), purpose, expires)
     )
     conn.commit()
     conn.close()
@@ -154,8 +155,14 @@ def _verify_code(email, code, purpose):
         conn.close()
         return False, "Too many incorrect attempts. Please request a new code."
 
-    # Check code
-    if row["code"] != code.strip():
+    # Check code. New codes are hashed; the fallback supports older demo DB rows.
+    submitted_code = code.strip()
+    try:
+        code_matches = check_password_hash(row["code"], submitted_code)
+    except ValueError:
+        code_matches = hmac.compare_digest(row["code"], submitted_code)
+
+    if not code_matches:
         cur.execute(
             "UPDATE verification_codes SET attempts = attempts + 1 WHERE id = ?",
             (row["id"],)
@@ -170,6 +177,14 @@ def _verify_code(email, code, purpose):
     conn.commit()
     conn.close()
     return True, None
+
+
+def _reset_token_matches(stored_token, submitted_token):
+    """Compare hashed reset tokens, with fallback for older demo DB rows."""
+    try:
+        return check_password_hash(stored_token, submitted_token)
+    except ValueError:
+        return hmac.compare_digest(stored_token, submitted_token)
 
 
 # ========= Login =========
@@ -536,9 +551,10 @@ def verify_reset_code():
             cur.execute("SELECT id FROM users WHERE email = ?", (email_input,))
             user = cur.fetchone()
             if user:
+                token_hash = generate_password_hash(token)
                 cur.execute(
                     "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)",
-                    (user["id"], token, expires_at)
+                    (user["id"], token_hash, expires_at)
                 )
                 conn.commit()
             conn.close()
@@ -566,8 +582,12 @@ def reset_password(token):
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM password_reset_tokens WHERE token = ? AND used = 0", (token,))
-    token_row = cur.fetchone()
+    cur.execute("SELECT * FROM password_reset_tokens WHERE used = 0 ORDER BY id DESC")
+    token_row = None
+    for candidate in cur.fetchall():
+        if _reset_token_matches(candidate["token"], token):
+            token_row = candidate
+            break
 
     if not token_row:
         conn.close()

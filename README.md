@@ -26,6 +26,7 @@ Core goals:
 
 - Security controls:
   - Password policy enforcement
+  - CSRF protection for state-changing form submissions
   - CAPTCHA-style registration challenge
   - IP-based rate limiting for login, registration, and password reset
   - In-memory DoS detection and temporary IP blocking
@@ -99,7 +100,15 @@ Copy the example environment file and edit values for your machine:
 Copy-Item app\.env.example app\.env
 ```
 
-At minimum, set a strong `SECRET_KEY`. If using OpenSearch or SMTP, update the matching values.
+At minimum, set:
+
+- `SECRET_KEY`: generate one with `python -c "import secrets; print(secrets.token_urlsafe(48))"`
+- `DEFAULT_ADMIN_PASSWORD`: the first admin password for your local database
+- `OS_PASS`: the same password used for OpenSearch, if SIEM logging is enabled
+
+The app fails fast if required secret values are empty or left as unsafe demo placeholders. For an isolated classroom demo only, set `ALLOW_INSECURE_DEMO_CONFIG=true`.
+
+SMTP is optional for basic login, admin, teacher, and student workflows. Email verification and password reset delivery require SMTP settings.
 
 ### 2. Install Python dependencies
 
@@ -117,6 +126,8 @@ Copy the Docker environment template and set the same password used by `OS_PASS`
 ```powershell
 Copy-Item docker\.env.example docker\.env
 ```
+
+Edit `docker\.env` and set `OPENSEARCH_INITIAL_ADMIN_PASSWORD`. Use the same value for `OS_PASS` in `app\.env`.
 
 ```powershell
 cd ..\docker
@@ -147,7 +158,14 @@ On first run, the app seeds an admin account from environment variables:
 - `DEFAULT_ADMIN_EMAIL`
 - `DEFAULT_ADMIN_PASSWORD`
 
-For a public repository or live demo, change the default password before publishing or presenting.
+The application will not start with an empty or placeholder admin password unless `ALLOW_INSECURE_DEMO_CONFIG=true` is set for an isolated demo.
+
+## Configuration Notes
+
+- Keep `TRUST_PROXY_HEADERS=false` for normal local use. Enable it only when the app runs behind a trusted reverse proxy that controls `X-Forwarded-For`.
+- Keep `FLASK_DEBUG=false` unless actively debugging locally.
+- Set `SESSION_COOKIE_SECURE=true` only when serving the app over HTTPS.
+- `OS_VERIFY_SSL=false` is convenient for the local OpenSearch container's self-signed certificate. Use a trusted certificate and set it to `true` for a real deployment.
 
 ## Attack Simulation
 

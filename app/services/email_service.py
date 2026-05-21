@@ -5,7 +5,6 @@ Handles sending verification codes via SMTP for:
   - Password reset (forgot password flow)
   - Email MFA (registration verification)
 
-Falls back gracefully to on-screen display when SMTP is not configured.
 Follows NIST SP 800-63B guidelines for verification code delivery.
 """
 

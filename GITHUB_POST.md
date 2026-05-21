@@ -41,7 +41,7 @@ This project helped me connect software engineering with security monitoring, de
 - Flask university portal with admin, teacher, and student roles
 - OpenSearch SIEM logging and dashboard integration
 - AI-assisted threat analysis using local Ollama
-- Brute force, registration abuse, password reset abuse, and DoS protection
+- CSRF protection plus brute force, registration abuse, password reset abuse, and DoS protection
 - Attack simulation scripts for validation and demonstration
 - GitHub-safe setup with environment templates and ignored private runtime files
 

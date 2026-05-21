@@ -42,16 +42,19 @@
                             <div class="actions-row">
                                 {% if u["is_active"] %}
                                 <form method="POST" action="{{ url_for('admin.admin_toggle_user', user_id=u['id']) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="action" value="disable">
                                     <button class="btn-danger-sm" type="submit">Disable</button>
                                 </form>
                                 {% else %}
                                 <form method="POST" action="{{ url_for('admin.admin_toggle_user', user_id=u['id']) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="action" value="enable">
                                     <button class="btn-success-sm" type="submit">Enable</button>
                                 </form>
                                 {% endif %}
                                 <form method="POST" action="{{ url_for('admin.admin_change_role', user_id=u['id']) }}" style="display:flex;align-items:center;gap:6px">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <select name="new_role" required style="width:auto;min-width:110px;padding:7px 10px;font-size:12px">
                                         <option value="student" {{ 'selected' if u['role']=='student' }}>Student</option>
                                         <option value="teacher" {{ 'selected' if u['role']=='teacher' }}>Teacher</option>

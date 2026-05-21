@@ -14,13 +14,17 @@ import requests
 import urllib3
 from datetime import datetime, timezone
 from flask import request as flask_request, session
-from config import OS_URL, OS_INDEX, OS_USER, OS_PASS, OS_VERIFY_SSL
+from config import OS_URL, OS_INDEX, OS_USER, OS_PASS, OS_VERIFY_SSL, TRUST_PROXY_HEADERS
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def get_client_ip():
-    return flask_request.headers.get("X-Forwarded-For", flask_request.remote_addr) or "unknown"
+    if TRUST_PROXY_HEADERS:
+        forwarded_for = flask_request.headers.get("X-Forwarded-For", "")
+        if forwarded_for:
+            return forwarded_for.split(",", 1)[0].strip() or "unknown"
+    return flask_request.remote_addr or "unknown"
 
 
 def get_user_agent():
